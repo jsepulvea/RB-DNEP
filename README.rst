@@ -8,13 +8,6 @@ Overview
 
 The model is structured into two levels: the upper-level problem, handled by the distribution system operator, involves investment decisions in infrastructure. The lower-level, tackled by local energy communities, focuses on the deployment of distributed energy resources, considering the constraints imposed by the upper-level decisions.
 
-Features
-========
-- Bilevel programming approach to model the interactions between ADNs and LECs.
-- Robust optimization to handle uncertainty in long-term demand dynamics and solar irradiance.
-- Simulation of network capacity constraints and their impact on LEC decision-making.
-- Tools for visualizing and analyzing the impact of investment decisions on network performance.
-
 Installation
 ============
 
