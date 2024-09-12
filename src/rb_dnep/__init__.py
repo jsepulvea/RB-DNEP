@@ -14,3 +14,8 @@ except PackageNotFoundError:  # pragma: no cover
     __version__ = "unknown"
 finally:
     del version, PackageNotFoundError
+
+
+from .problem_data import ProblemData
+from .models.dnep_model import DDNEPModel
+
