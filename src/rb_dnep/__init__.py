@@ -17,5 +17,4 @@ finally:
 
 
 from .problem_data import ProblemData
-from .models.dnep_model import DDNEPModel
 
