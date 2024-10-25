@@ -71,5 +71,5 @@ pdata.set_default_tsnames()
 
 # Save to file
 prefix_name = os.path.join(OUTPUT_FOLDER, "toy_4bus_2LECs_template")
-pdata_path = f"{prefix_name}.json"
+pdata_path = f"{prefix_name}"
 pdata.write(pdata_path)

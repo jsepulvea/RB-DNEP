@@ -1,0 +1,224 @@
+host_grid:
+  demands:
+    0:
+      index: 0
+      name: null
+      bus: 2
+      snom_MVA: 0.447
+      pnom_MW: 0.4
+      qnom_MVAr: 0.2
+      p_MW:
+        tsname: ds_p_MW_0
+        default: 0.4
+      q_MVAr:
+        tsname: ds_q_MVAr_0
+        default: 0.2
+    1:
+      index: 1
+      name: null
+      bus: 3
+      snom_MVA: 0.447
+      pnom_MW: 0.4
+      qnom_MVAr: 0.2
+      p_MW:
+        tsname: ds_p_MW_1
+        default: 0.4
+      q_MVAr:
+        tsname: ds_q_MVAr_1
+        default: 0.2
+    2:
+      index: 2
+      name: null
+      bus: 4
+      snom_MVA: 0.447
+      pnom_MW: 0.4
+      qnom_MVAr: 0.2
+      p_MW:
+        tsname: ds_p_MW_2
+        default: 0.4
+      q_MVAr:
+        tsname: ds_q_MVAr_2
+        default: 0.2
+  generators: {}
+  buses:
+    1:
+      index: 1
+      name: null
+      vnom_kV: 12.5
+      bustype: 0
+    2:
+      index: 2
+      name: null
+      vnom_kV: 12.5
+      bustype: 1
+    3:
+      index: 3
+      name: null
+      vnom_kV: 12.5
+      bustype: 1
+    4:
+      index: 4
+      name: null
+      vnom_kV: 12.5
+      bustype: 1
+  branches:
+    0:
+      index: 0
+      name: null
+      busf: 2
+      bust: 3
+      r_pu: 0.016200000000000003
+      x_pu: 0.006
+      b_pu: 0.0
+      snom_MVA: 999
+    1:
+      index: 1
+      name: null
+      busf: 1
+      bust: 2
+      r_pu: 0.016200000000000003
+      x_pu: 0.006
+      b_pu: 0.0
+      snom_MVA: 999
+    2:
+      index: 2
+      name: null
+      busf: 4
+      bust: 1
+      r_pu: 0.016200000000000003
+      x_pu: 0.006
+      b_pu: 0.0
+      snom_MVA: 999
+  inv_branches:
+    0:
+      cost_investment: 1000.0
+      cost_maintenance: 0.0
+      index: 0
+      name: null
+      busf: 1
+      bust: 2
+      r_pu: 0.0162
+      x_pu: 0.006
+      b_pu: 0.0
+      snom_MVA: 999.0
+  inv_generators: {}
+  params:
+    name: null
+    index: null
+    sbase_MVA: 1.0
+lecs:
+  1:
+    demands:
+      0:
+        index: 0
+        name: null
+        bus: 4
+        snom_MVA: 0.08940000000000001
+        pnom_MW: 0.08000000000000002
+        qnom_MVAr: 0.04000000000000001
+        p_MW:
+          tsname: lec1_p_MW_0
+          default: 0.4
+        q_MVAr:
+          tsname: lec1_q_MVAr_0
+          default: 0.2
+    generators:
+      0:
+        index: 0
+        name: null
+        bus: 0
+        snom_MVA: 0.5
+        pfmin: null
+        pmax_MW:
+          tsname: lec1_pmax_MW_0
+          default: 0.5
+    buses: {}
+    branches: {}
+    inv_branches: {}
+    inv_generators:
+      0:
+        cost_investment: 1000.0
+        cost_maintenance: 50.0
+        index: 0
+        name: null
+        bus: 0
+        snom_MVA: 0.5
+        pfmin: null
+        pmax_MW:
+          tsname: lec_inv_1_pmax_MW_0
+          default: 0.5
+    params:
+      name: LEC 1
+      index: null
+      sbase_MVA: null
+      host_bus_idx: 1
+      reinforcement:
+      - 0.1
+      - 0.2
+      - 0.3
+  2:
+    demands:
+      0:
+        index: 0
+        name: null
+        bus: 4
+        snom_MVA: 0.08940000000000001
+        pnom_MW: 0.08000000000000002
+        qnom_MVAr: 0.04000000000000001
+        p_MW:
+          tsname: lec2_p_MW_0
+          default: 0.4
+        q_MVAr:
+          tsname: lec2_q_MVAr_0
+          default: 0.2
+    generators:
+      0:
+        index: 0
+        name: null
+        bus: 0
+        snom_MVA: 0.5
+        pfmin: null
+        pmax_MW:
+          tsname: lec2_pmax_MW_0
+          default: 0.5
+    buses: {}
+    branches: {}
+    inv_branches: {}
+    inv_generators:
+      0:
+        cost_investment: 1000.0
+        cost_maintenance: 50.0
+        index: 0
+        name: null
+        bus: 0
+        snom_MVA: 0.5
+        pfmin: null
+        pmax_MW:
+          tsname: lec_inv_2_pmax_MW_0
+          default: 0.5
+    params:
+      name: LEC 2
+      index: null
+      sbase_MVA: null
+      host_bus_idx: 2
+      reinforcement:
+      - 0.1
+      - 0.2
+      - 0.3
+time_config:
+  start: !timestamp '2024-10-01T00:00:00'
+  end: !timestamp '2034-09-30T00:00:00'
+  sampling_frequency: !timedelta '0 days 00:15:00'
+  scenario_length: !timedelta '1 days 00:00:00'
+  subperiod_starts:
+  - !timestamp '2024-12-31T00:00:00'
+  - !timestamp '2025-12-31T00:00:00'
+  - !timestamp '2026-12-31T00:00:00'
+  - !timestamp '2027-12-31T00:00:00'
+  - !timestamp '2028-12-31T00:00:00'
+  - !timestamp '2029-12-31T00:00:00'
+  - !timestamp '2030-12-31T00:00:00'
+  - !timestamp '2031-12-31T00:00:00'
+  - !timestamp '2032-12-31T00:00:00'
+  - !timestamp '2033-12-31T00:00:00'
+  n_sce_per_subperiod: 2

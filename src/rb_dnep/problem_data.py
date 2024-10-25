@@ -8,7 +8,6 @@ import json
 import os
 import glob
 import yaml
-
 import pandas as pd
 
 #******************************************************************************#
@@ -37,86 +36,62 @@ def pretty_print_dict(d: dict) -> str:
 
     return yaml.dump(d, default_flow_style=False, sort_keys=False, Dumper=NoAliasDumper)
 
+# Define custom YAML tag for pandas.Timestamp
+TIMESTAMP_TAG = '!timestamp'
+
+# Custom representer for pandas.Timestamp
+def timestamp_representer(dumper, data):
+    return dumper.represent_scalar(TIMESTAMP_TAG, data.isoformat())
+
+# Custom constructor for pandas.Timestamp
+def timestamp_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    return pd.Timestamp(value)
+
+# Register the custom representer and constructor with PyYAML
+yaml.add_representer(pd.Timestamp, timestamp_representer)
+yaml.add_constructor(TIMESTAMP_TAG, timestamp_constructor)
+
+# Define custom YAML tag for pandas.Timedelta
+TIMEDELTA_TAG = '!timedelta'
+
+# Custom representer for pandas.Timedelta
+def timedelta_representer(dumper, data):
+    # Convert the Timedelta to ISO 8601 duration string format
+    return dumper.represent_scalar(TIMEDELTA_TAG, str(data))
+
+# Custom constructor for pandas.Timedelta
+def timedelta_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    return pd.Timedelta(value)
+
+# Register the custom representer and constructor with PyYAML
+yaml.add_representer(pd.Timedelta, timedelta_representer)
+yaml.add_constructor(TIMEDELTA_TAG, timedelta_constructor)
+
+
 #******************************************************************************#
 # Problem data classes
 #******************************************************************************#
-class TimeConfig:
+@dataclass
+class TimeConfig(ps.SerializableDataClass):
     """
     A class representing the time configuration for a planning problem.
-
-    Parameters
-    ----------
-    start : pd.Timestamp or str
-        The start time of the planning horizon.
-    end : pd.Timestamp or str
-        The end time of the planning horizon.
-    sampling_frequency : pd.Timedelta or str
-        The sampling frequency for all scenarios.
-    scenario_length : pd.Timedelta or str
-        The length of each scenario.
-    scenario_starts : List[Union[pd.Timestamp, str]]
-        The starting timestamps of each scenario.
     """
+    start: Union[pd.Timestamp, str]
+    end: Union[pd.Timestamp, str]
+    sampling_frequency: Union[pd.Timedelta, str]
+    scenario_length: Union[pd.Timedelta, str]
+    subperiod_starts: Union[pd.Timedelta, str]
+    n_sce_per_subperiod: int
 
-    def __init__(
-        self,
-        start: Union[pd.Timestamp, str],
-        end: Union[pd.Timestamp, str],
-        sampling_frequency: Union[pd.Timedelta, str],
-        scenario_length: Union[pd.Timedelta, str],
-        scenario_starts: List[Union[pd.Timestamp, str]],
-    ):
-        """
-        Initialize a TimeConfig instance.
-
-        Parameters
-        ----------
-        start : pd.Timestamp or str
-            The start time of the planning horizon.
-        end : pd.Timestamp or str
-            The end time of the planning horizon.
-        sampling_frequency : pd.Timedelta or str
-            The sampling frequency for all scenarios.
-        scenario_length : pd.Timedelta or str
-            The length of each scenario.
-        scenario_starts : List[Union[pd.Timestamp, str]]
-            The starting timestamps of each scenario.
-        """
-        self.start = pd.Timestamp(start)
-        self.end = pd.Timestamp(end)
-        self.sampling_frequency = pd.Timedelta(sampling_frequency)
-        self.scenario_length = pd.Timedelta(scenario_length)
-        self.scenario_starts = [pd.Timestamp(ts) for ts in scenario_starts]
-        self.scenario_indices = list(range(len(self.scenario_starts)))
-    
-    @property
-    def scenarios(self):
-        return self.scenario_indices
-    
-    def get_scenario_time_range(self, i: int) -> pd.DatetimeIndex:
-        """
-        Get the time range for the scenario at the specified index.
-
-        Parameters
-        ----------
-        i : int
-            The index of the scenario.
-
-        Returns
-        -------
-        pd.DatetimeIndex
-            The time range for the specified scenario.
-        """
-        if i < 0 or i >= len(self.scenario_starts):
-            raise IndexError("Scenario index out of range.")
-        
-        start = self.scenario_starts[i]
-        time_range = pd.date_range(
-            start=start,
-            periods=int(self.scenario_length / self.sampling_frequency),
-            freq=self.sampling_frequency
-        )
-        return time_range
+    def __post_init__(self):
+        # Convert string inputs to the appropriate pandas time objects
+        self.start = pd.Timestamp(self.start) if isinstance(self.start, str) else self.start
+        self.end = pd.Timestamp(self.end) if isinstance(self.end, str) else self.end
+        self.sampling_frequency = pd.to_timedelta(self.sampling_frequency) if isinstance(self.sampling_frequency, str) else self.sampling_frequency
+        self.scenario_length = pd.to_timedelta(self.scenario_length) if isinstance(self.scenario_length, str) else self.scenario_length
+        self.subperiod_starts = pd.to_timedelta(self.subperiod_starts) if isinstance(self.subperiod_starts, str) else self.subperiod_starts
 
     def __str__(self):
         """
@@ -132,84 +107,66 @@ class TimeConfig:
         s += f"  Planning horizon end: {self.end}\n"
         s += f"  Sampling frequency: {self.sampling_frequency}\n"
         s += f"  Scenario length: {self.scenario_length}\n"
-        s += f"  Number of scenarios: {len(self.scenario_starts)}\n"
-        s += f"  Scenarios:\n"
-        for idx, start_time in zip(self.scenario_indices, self.scenario_starts):
-            s += f"    Scenario {idx}: starts at {start_time}\n"
+        s += f"  Subperiod starts:\n"
+        for i, subperiod_start in enumerate(self.subperiod_starts):
+            s += f"    Subperiod {i}: {subperiod_start}\n"
+        s += f"  Number of scenarios per subperiod: {self.n_sce_per_subperiod}\n"
         return s
 
-    def to_dict(self):
+    def __repr__(self):
         """
-        Convert the TimeConfig instance to a serializable dictionary.
+        Return a string representation of the TimeConfig instance.
 
         Returns
         -------
-        dict
-            A dictionary representation of the TimeConfig instance.
+        str
+            A string representation of the TimeConfig instance.
         """
-        return {
-            'start': self.start.isoformat(),
-            'end': self.end.isoformat(),
-            'sampling_frequency': str(self.sampling_frequency),
-            'scenario_length': str(self.scenario_length),
-            'scenario_starts': [ts.isoformat() for ts in self.scenario_starts],
-            'scenario_indices': self.scenario_indices,
-        }
+        return self.__str__()
 
-    @classmethod
-    def from_dict(cls, data):
-        """
-        Create a TimeConfig instance from a dictionary.
+    @property
+    def n_subperiods(self) -> int:
+        return len(self.subperiod_starts)
 
-        Parameters
-        ----------
-        data : dict
-            A dictionary containing the TimeConfig data.
-
-        Returns
-        -------
-        TimeConfig
-            A TimeConfig instance created from the dictionary data.
-        """
-        return cls(
-            start=pd.Timestamp(data['start']),
-            end=pd.Timestamp(data['end']),
-            sampling_frequency=pd.Timedelta(data['sampling_frequency']),
-            scenario_length=pd.Timedelta(data['scenario_length']),
-            scenario_starts=[pd.Timestamp(ts) for ts in data['scenario_starts']],
-        )
-
-    def write(self, filename: str):
-        """
-        Serialize the TimeConfig instance to a JSON file.
-
-        Parameters
-        ----------
-        filename : str
-            The filename to write the JSON data to.
-        """
-        with open(filename, 'w') as f:
-            json.dump(self.to_dict(), f)
-
-    @classmethod
-    def read(cls, filename: str):
-        """
-        Deserialize a TimeConfig instance from a JSON file.
-
-        Parameters
-        ----------
-        filename : str
-            The filename to read the JSON data from.
-
-        Returns
-        -------
-        TimeConfig
-            A TimeConfig instance created from the JSON data.
-        """
-        with open(filename, 'r') as f:
-            data = json.load(f)
-        return cls.from_dict(data)
+    @property
+    def n_scenarios(self) -> int:
+        return self.n_sce_per_subperiod * self.n_subperiods
     
+    @property
+    def scenarios(self) -> List[int]:
+        return list(range(self.n_scenarios))
+    
+    @property
+    def scenario_dimension(self) -> int:
+        return self.scenario_length // self.sampling_frequency
+    
+    def scenario2subperiod(self, sce_idx) -> int:
+        return sce_idx // self.n_sce_per_subperiod
+
+    def is_valid(self) -> bool:
+        """
+        Validate if the configuration is logically consistent:
+        - The start time is before the end time.
+        - The scenario length is less than the planning horizon length.
+        - The subperiod length is a multiple of the scenario length.
+
+        Returns
+        -------
+        bool
+            True if the configuration is valid, otherwise False.
+        """
+        start_time = pd.Timestamp(self.start)
+        end_time = pd.Timestamp(self.end)
+        if start_time >= end_time:
+            return False
+        if pd.Timedelta(self.scenario_length) > (end_time - start_time):
+            return False
+        
+        # Check if the scenario length is a multiple of the sampling frequency
+        if pd.Timedelta(self.scenario_length) % pd.Timedelta(self.sampling_frequency) != pd.Timedelta(0):
+            return False
+
+        return True
 
 
 class DataTimeSeries:
@@ -218,18 +175,17 @@ class DataTimeSeries:
         
         self.tsnames = tsnames
         self.dict_df = dict_df if dict_df is not None else {}
+        
+        scenario_dimension = time_config.scenario_dimension
 
-        scenarios = time_config.scenarios
-
-        for scenario in scenarios:
-            
-            time_range = time_config.get_scenario_time_range(scenario)
-
-            self.dict_df[scenario] = self._create_empty_df(tsnames, time_range)
+        self.dict_df = {
+            scenario: self._create_empty_df(tsnames, scenario_dimension)
+            for scenario in time_config.scenarios
+        }
 
     @staticmethod
-    def _create_empty_df(tsnames, time_range):
-        return pd.DataFrame(index=time_range, columns=tsnames)
+    def _create_empty_df(tsnames, n_rows):
+        return pd.DataFrame(np.nan, index=range(n_rows), columns=tsnames, dtype=float)
     
     def get_value(self, tsname, *args):
         scenario = args[0]
@@ -355,7 +311,7 @@ class DataTimeSeries:
         """
         for key, df in self.dict_df.items():
             key_str = self._key2str(key)
-            df.to_csv(f"{prefix}_key{key_str}.csv", index_label="time")
+            df.to_csv(f"{prefix}_key{key_str}.csv", index_label="timestep")
 
     @classmethod
     def read(cls, prefix: str, format_ext="csv"):
@@ -409,8 +365,7 @@ class DataTimeSeries:
             key_str = file_basename_noext.rsplit("key")[1]
 
             key = cls._str2key(key_str)
-            dict_df[key] = pd.read_csv(file, index_col="time")
-            dict_df[key].index = pd.to_datetime(dict_df[key].index)
+            dict_df[key] = pd.read_csv(file, index_col="timestep")
 
         return cls(dict_df)
 
@@ -480,7 +435,7 @@ class ProblemData:
     """
 
     def __init__(self, lecs: Dict[int, DataLEC]=None, host_grid: ps.DataPowerSystem = None,
-                 tsdata: DataTimeSeries = None, time_config: ps.PlanningTimeConfig = None) -> None:
+                 tsdata: DataTimeSeries = None, time_config: TimeConfig = None) -> None:
         """ProblemData is a class that represents the data of the RB-DNEP problem.
 
         Parameters
@@ -491,7 +446,7 @@ class ProblemData:
             The host grid of the problem.
         tsdata : Dict[int, ps.DataTimeSeries], optional
             A dictionary that maps the index of the LEC to the DataTimeSeries object.
-        time_config : ps.PlanningTimeConfig, optional
+        time_config : TimeConfig, optional
             The time configuration of the problem.
 
         """
@@ -514,22 +469,22 @@ class ProblemData:
         self.lecs[index] = lec
 
     def system_dict(self):
-        json_data = {}
+        sys_dict = {}
 
         # Write host grid
-        json_data["host_grid"] = self.host_grid.to_dict()
+        sys_dict["host_grid"] = self.host_grid.to_dict()
 
         # Write LECs
-        json_data["lecs"] = {idx: lec.to_dict() for idx, lec in self.lecs.items()}
+        sys_dict["lecs"] = {idx: lec.to_dict() for idx, lec in self.lecs.items()}
 
         if self.time_config is not None:
-            json_data["time_config"] = self.time_config.to_dict()
+            sys_dict["time_config"] = self.time_config.to_dict()
 
-        return json_data    
+        return sys_dict
 
     def __str__(self):
         pretty_str = "Problem data:\n-------------\n\n"
-        pretty_str += json.dumps(self.system_dict(), indent=4)
+        pretty_str += pretty_print_dict(self.system_dict())
         pretty_str += "\nTime series data:\n-----------------\n\n"
         pretty_str += str(self.tsdata)
         return pretty_str
@@ -537,64 +492,72 @@ class ProblemData:
     def __repr__(self):
         return self.__str__()
 
-    def write(self, json_path: str, tsdata_path: str=None) -> None:
-        """Write the problem data to a file.
+    def write(self, yaml_path: str, tsdata_path: str = None, format: str = "yaml") -> None:
+        """Write the problem data to a YAML file.
 
         Parameters:
         -----------
-        - json_path: str, the path to the json file.
+        - yaml_path: str, the path to the YAML file.
         - tsdata_path: str, the path to the time series data file.
         """
-        json_data = {}
+        yaml_data = {}
 
         # Write host grid
-        json_data["host_grid"] = self.host_grid.to_dict()
+        yaml_data["host_grid"] = self.host_grid.to_dict()
 
         # Write LECs
-        json_data["lecs"] = {idx: lec.to_dict() for idx, lec in self.lecs.items()}
+        yaml_data["lecs"] = {idx: lec.to_dict() for idx, lec in self.lecs.items()}
 
+        # Write time configuration if it exists
         if self.time_config is not None:
-            json_data["time_config"] = self.time_config.to_dict()
+            yaml_data["time_config"] = self.time_config.to_dict()
 
-        json.dump(json_data, open(json_path, "w"))
+        # Ensure the yaml_path has the correct extension if not already present
+        if not yaml_path.lower().endswith('.' + format):
+            yaml_path += '.' + format
 
-        # Write time series data
+        # Serialize the data to a YAML file
+        with open(yaml_path, "w") as file:
+            yaml.dump(yaml_data, file, sort_keys=False)
+
+        # Write time series data if it exists
         if self.tsdata:
             self.tsdata.write(tsdata_path)
 
     @classmethod
-    def read(cls, json_path: str, tsdata_path: str=None) -> 'ProblemData':
-        """Read the problem data from a file.
+    def read(cls, yaml_path: str, tsdata_path: str = None) -> 'ProblemData':
+        """Read the problem data from a YAML file.
 
         Parameters:
         -----------
-        - json_path: str, the path to the json file.
+        - yaml_path: str, the path to the YAML file.
         - tsdata_path: str, the path to the time series data file.
         """
-        json_data = json.load(open(json_path, "r"))
-        json_data = convert_keys_to_int(json_data)
+        with open(yaml_path, "r") as file:
+            yaml_data = yaml.load(file, Loader=yaml.FullLoader)
+
 
         # Read host grid
-        host_grid = ps.DataPowerSystem.from_dict(json_data["host_grid"])
+        host_grid = ps.DataPowerSystem.from_dict(yaml_data["host_grid"])
 
         # Read LECs
         lecs = {int(idx): DataLEC.from_dict(lec)
-                for idx, lec in json_data["lecs"].items()}
+                for idx, lec in yaml_data["lecs"].items()}
 
-        # Read time configuration
-        if "time_config" in json_data:
-            time_config = ps.PlanningTimeConfig.from_dict(json_data["time_config"])
+        # Read time configuration if it exists
+        if "time_config" in yaml_data:
+            time_config = TimeConfig.from_dict(yaml_data["time_config"])
         else:
             time_config = None
 
-        # Read time series data
+        # Read time series data if it exists
         if tsdata_path is not None:
             tsdata = ps.DataTimeSeries.read(tsdata_path)
         else:
             tsdata = None
 
         return cls(lecs=lecs, host_grid=host_grid, tsdata=tsdata,
-                   time_config=time_config)
+                time_config=time_config)
 
     def set_default_tsnames(self):
         
@@ -649,12 +612,35 @@ class ProblemData:
             for generator in lec.generators.values():
                 ts_structure["lecs"][lec_idx]["Generator.pmax_MW"].append(generator.pmax_MW.tsname)
 
+            for invgenerator in lec.inv_generators.values():
+                ts_structure["lecs"][lec_idx]["Generator.pmax_MW"].append(invgenerator.pmax_MW.tsname)
+
         return ts_structure
     
-    def display_time_series_structure(self):
+    def help(self):
         ts_structure = self.time_series_structure()
         pretty_str = "Time series structure:\n----------------------\n\n"
-        print(pretty_str + pretty_print_dict(ts_structure))
+
+        # Explanation for Host Grid data
+        pretty_str += "Host Grid Time Series Data:\n"
+        pretty_str += "  - Demand.p_MW: Active power demands in MW at different nodes of the host grid.\n"
+        pretty_str += "  - Demand.q_MVAr: Reactive power demands in MVAr at different nodes of the host grid.\n"
+        pretty_str += "  - Generator.pmax_MW: Maximum power output capabilities of generators in MW.\n\n"
+
+        # Explanation for LECs data
+        pretty_str += "LECs (Local Energy Communities) Time Series Data:\n"
+        pretty_str += "  Each LEC has its own set of time series data:\n"
+        pretty_str += "  - Demand.p_MW: Active power demands in MW at different nodes within the LEC.\n"
+        pretty_str += "  - Demand.q_MVAr: Reactive power demands in MVAr at different nodes within the LEC.\n"
+        pretty_str += "  - Generator.pmax_MW: Maximum power output capabilities of generators in MW within the LEC.\n\n"
+
+        # Print the time series structure
+        pretty_str += "This instance requires the following:\n"
+        pretty_str += "-------------------------------------\n"
+
+        pretty_str += pretty_print_dict(ts_structure)
+        print(pretty_str)
+
     
     def tsnames(self) -> List[str]:
         """Return the time series names of the problem data.
@@ -669,7 +655,7 @@ class ProblemData:
         # Host grid
         for demand in self.host_grid.demands.values():
             tsnames.append(demand.p_MW.tsname)
-            tsnames.append(demand.q_MVAr.tsname)
+            # tsnames.append(demand.q_MVAr.tsname)
 
         for generator in self.host_grid.generators.values():
             tsnames.append(generator.pmax_MW.tsname)
@@ -678,7 +664,7 @@ class ProblemData:
         for lec in self.lecs.values():
             for demand in lec.demands.values():
                 tsnames.append(demand.p_MW.tsname)
-                tsnames.append(demand.q_MVAr.tsname)
+                # tsnames.append(demand.q_MVAr.tsname)
 
             for generator in lec.generators.values():
                 tsnames.append(generator.pmax_MW.tsname)
