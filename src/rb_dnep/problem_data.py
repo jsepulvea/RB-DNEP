@@ -600,34 +600,36 @@ class ProblemData:
         
         l_demands_p_tsnames = []
         for demand in self.host_grid.demands.values():
-            p_tsname = f"ds_p_MW{demand.index}"
-            q_tsname = f"ds_q_MVAr{demand.index}"
+            p_tsname = f"ds_p_MW_{demand.index}"
+            q_tsname = f"ds_q_MVAr_{demand.index}"
             demand.p_MW.set_tsname(p_tsname)
             l_demands_p_tsnames.append(p_tsname)
             demand.q_MVAr.set_tsname(q_tsname)
 
         for generator in self.host_grid.generators.values():
-            generator.pmax_MW.set_tsname(f"ds_p_MW{generator.index}")
+            generator.pmax_MW.set_tsname(f"ds_p_MW_{generator.index}")
 
         for lec_idx, lec in self.lecs.items():
             for demand in lec.demands.values():
-                demand.p_MW.set_tsname(f"lec{lec_idx}_p_MW{demand.index}")
-                demand.q_MVAr.set_tsname(f"lec{lec_idx}_q_MVAr{demand.index}")
+                demand.p_MW.set_tsname(f"lec{lec_idx}_p_MW_{demand.index}")
+                demand.q_MVAr.set_tsname(f"lec{lec_idx}_q_MVAr_{demand.index}")
 
             for generator in lec.generators.values():
-                generator.pmax_MW.set_tsname(f"lec{lec_idx}_pmax_MW{generator.index}")
+                generator.pmax_MW.set_tsname(f"lec{lec_idx}_pmax_MW_{generator.index}")
 
             for invgenerator in lec.inv_generators.values():
-                invgenerator.pmax_MW.set_tsname(f"lec_inv_{lec_idx}_pmax_MW{generator.index}")
+                invgenerator.pmax_MW.set_tsname(f"lec_inv_{lec_idx}_pmax_MW_{generator.index}")
 
 
     def time_series_structure(self) -> List[str]:
 
-        aux_tstypes = {"Demand.p_MW": [], "Demand.q_MVAr": [], "Generator.pmax_MW": []}
-
         ts_structure = {
-            "host_grid": aux_tstypes.copy(),
-            "lecs": {lec_index: aux_tstypes.copy() for lec_index in self.lecs.keys()}
+            "host_grid": {"Demand.p_MW": [], "Demand.q_MVAr": [], "Generator.pmax_MW": []},
+            "lecs": {
+                lec_index:
+                {"Demand.p_MW": [], "Demand.q_MVAr": [], "Generator.pmax_MW": []} 
+                for lec_index in self.lecs.keys()
+            }
         }
 
         # Host grid

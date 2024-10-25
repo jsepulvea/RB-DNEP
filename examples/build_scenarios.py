@@ -33,6 +33,7 @@ start = '2024-10-01'
 end = '2034-09-30'
 sampling_frequency = '15min'
 scenario_length = '1D'
+subperiod_length = '1Y'
 
 # Generate scenario_starts
 n_scenarios_total = 25

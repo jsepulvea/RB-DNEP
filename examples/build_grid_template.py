@@ -22,7 +22,6 @@ dsdata = ps.case_ieee4bus()  # Distribution system data
 dsdata.add(ps.InvBranch(busf=1, bust=2, r_pu=0.0162, x_pu=0.006,
     b_pu=0.0, snom_MVA=999.0, cost_investment = 1000.0, cost_maintenance = 0.0))
 
-
 pdata.host_grid = dsdata
 
 #******************************************************************************#
