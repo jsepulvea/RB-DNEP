@@ -16,5 +16,5 @@ finally:
     del version, PackageNotFoundError
 
 
-from .problem_data import ProblemData
+from .problem_data import ProblemData, TimeConfig, DataLEC, DataTimeSeries
 
